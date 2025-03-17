@@ -1,0 +1,366 @@
+---
+title: "Re-analysis of class size in Project STAR"
+author: "Samantha DeMars"
+html_document:
+    toc: true  
+    toc_float: true  
+    number_sections: true  
+    theme: united 
+editor: visual
+---
+
+# Re-analysis of class size in Project STAR
+
+```{r, echo=FALSE, results='hide'}
+library(haven)
+STAR_Students <- read_sav("C:/Users/Satan/Documents/School/UC Davis/Winter 2025/STA 207/Project/STAR_Students.sav")
+library(dplyr)
+library(ggplot2)
+library(knitr)
+```
+
+## Abstract
+
+The Tennessee Student/Teacher Achievement Ratio study, also called Project STAR linked small class sizes to academic achievement by randomly assigning students to three class sizes: "small", "regular", and "regular with aid". From the initial analysis report, it was uncovered that the class size of a first-grade student impacts the math test scores. In this analysis, we changed the class sizes from a categorical variable to a continuous one and adjusted for the student's average attendance and if students were pulled out of class. The goal was to see if the adjusted class size changes the effects on math scores. The results showed that the adjusted class size was not as significant compared to the original class size. This means that the adjusted class size had little effect on the test scores. Although the original class size might not be as accurate in determining how many students there are in a class, it is better to show significance. Future studies should focus on how smaller class sizes and the effects they have, like teaching methods, have on students' test scores as class size alone will not be beneficial for the students.
+
+## Introduction
+
+Small class sizes have long been linked to better academic achievement. One of the most well-known studies supporting this conclusion is the Tennessee Student/Teacher Achievement Ratio study, also called Project STAR. Project STAR aims to determine how the class size a student is in when they are first starting school influences their test scores at the end of the school year and beyond. To put it simply, they want to determine how they can improve children's quality of education.
+
+However, there are some limitations in the project STAR study. One critical issue is that the class size did not stay the same. Students are pulled in and out of class, especially during designated math and reading times, to attend special education programs (Evertson & Randolph, 1989). For example, a class with a registered size of 22 students might have five students in the special education program. So when they are learning about the subjects they will be tested on (Math and English) there are 17 students, which is considered a small class size in the study rather than the regular class size they were assigned. Similarly, the class size can be affected by the student’s attendance. If one or more students are consistently absent, then on average, the class size is smaller than reported.
+
+Further limitations in this study will be discussed in the caveats section.
+
+### Questions of interest
+
+The limitation in Project STAR discussed above, drove my questions of interest in this analysis.
+
+-What are the actual class sizes in the study? -Can the same conclusions as the STAR report be drawn with the adjusted class size?
+
+This will provide a more accurate understanding of the ideal class size for students to learn.
+
+## Background
+
+Project STAR focused on schools in Tennessee from 1985 through 1989. Schools volunteered to partake in the study, but only the ones that met the requirements were selected. The schools were required to have enough students to fit into three different class sizes: small, regular, and regular with a teacher's aid. A small class size consists of 13 to 16 students and a regular class size has 22 to 25 students. The students were between kindergarten and third grade. About 50 schools met these requirements and participated in the study. These schools are located in different urbanities ranging from rural, urban, suburban, and inner-city. Their teachers and students were randomly assigned to one of the class sizes. Once assigned to a class size, students stay within that class size for the whole duration of the project. So if a kindergarten student is assigned to a small class, they will continue to be in small classes until third grade or they drop out of the study. In total, 11,601 students participated in the study.
+
+```  
+```
+
+To assess how class sizes affect student’s academic performance, a written assessment was conducted at the end of each school year. Test scores of students within the study were further compared to non-participating schools similar to the ones selected in the STAR project.. 
+
+The STAR project collected various information about the schools, teachers, and students. The dataset in this analysis also includes what happens to the students after the study has ended. The following is a list of the information provided in the Harvard dataset that will be used:
+
+```
+```
+
+Urbanicity of school (rural, urban, suburban, and inner city) -Class size (small, regular, regular with teacher aid) -Demographics of the students and the teachers -Achievement scores (Kindergarten through 8th grade) -Attendance (Kindergarten, 1st and 3rd grade) -Participation (teacher evaluation of students in 4th and 8th grade) -Student’s attitude towards school (8th grade) -High School Transcripts (classes taken and grades received) -Graduated High School -College Entrance Exams (if the student took the exam and if so the score they received)
+
+### Caveats in the Initial Analysis Report
+
+In the initial analysis report, class size, urbanicity, and the teacher’s experience affect the math scores of first-grade students was explored. The initial report and a literature review indicated the first-grade teacher’s experience level did not have a significant effect on the student’s math scores. Even later, when a handful of third-grade teachers received specific training for the class size they would have, it had little effect on the student's achievement scores (Evertson & Randolph, 1989). The teacher’s experience level was disregarded in this analysis.
+
+``` 
+```
+
+Urbanicity did prove significant in the initial analysis. However, there is a concern about how urbanicity is defined. Inner city schools have more than half of their students receiving free lunch. Urban schools were decided by the town population. While suburban schools were determined by being located outside of the metropolitan area. This is a more accurate representation of the number of students of low socioeconomic status rather than the urbanicity of the school. These measurements for urbanicity are inconsistent. Socioeconomic status is not an accurate measure of urbanicity and is better defined by the population of the town/city the school is in.
+
+  In the initial analysis, class size is treated as a categorical variable. However, this report will examine class size as a continuous variable to determine how different class sizes by the number of students affect math scores to find a range in optimal class sizes without categorizing them as “small”, “regular” or “regular with aid”. The correct stratification for class size has not been decided on in the literature. The definition of a smaller class size has changed throughout history as Ryan and Greenfield (1975, p.174). Over the years the definition of a small class size has decreased and changed frequently. The goal for the effects of class size studies is to find the optimal class size for students to succeed. They need to know the actual number of students. 
+  
+```
+```
+
+Evertson and Randolph (1989) noted that "...several regular and small classes in both grades had aides available at least part of the day. In these cases, teachers generally shared an aide with other teachers at the same grade level within the building". Teacher aids were not always at their designated classes and often helped others, even in small classes. It is unclear how involved they were in their class. Was the aid only grading papers? Or were they actually helping the students? This is vital information that is not provided in the data.
+
+```{r, echo=FALSE, results='hide'}
+# 1st grade math scores with no na values and has only the variables of interest
+star <- STAR_Students %>% 
+  filter(!is.na(g1tmathss)) %>% 
+  select(g1tmathss, g1tchid, g1absent, g1present, g1specin, g1classsize) 
+# Sort dataset by teacher
+star_by_teach <- star %>% group_by(g1tchid)
+star_by_teach <- as.data.frame(star_by_teach)
+#Check NA values
+colSums(is.na(star_by_teach))
+absent_nas_count <- star_by_teach %>% filter(is.na(g1absent)) %>%
+  group_by(g1tchid) %>%
+  summarise(missing_count = n())
+print(absent_nas_count)
+present_nas_count <- star_by_teach %>% filter(is.na(g1present))%>%
+  group_by(g1tchid) %>%
+  summarise(missing_count = n())
+print(present_nas_count)
+# If necessary, fix variables
+class(star_by_teach$g1specin)
+star_by_teach <- star_by_teach %>% mutate(special=as_factor(g1specin)) %>% select(-g1specin)
+class(star_by_teach$g1tchid)
+star_by_teach$g1tchid <- as.factor(star_by_teach$g1tchid)
+star_by_teach$special <- as.factor(star_by_teach$special)
+#Remove and/or change NA values
+star_by_teach <- star_by_teach %>% filter(!is.na(special))
+star_by_teach <- star_by_teach %>% filter(!g1tchid %in% c(20345206, 22157106))
+star_by_teach <- star_by_teach %>%
+  mutate(across(-special, ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+colSums(is.na(star_by_teach))
+# create a total school days column by adding absent and present days.
+star_by_teach <- star_by_teach %>% mutate(totdays = g1absent + g1present)
+# create attendance ratio
+star_by_teach <- star_by_teach %>% mutate(attper = (g1present / totdays))
+# check attendance
+sum(star_by_teach$attper < .50) #only 2 students below 50%
+sum(star_by_teach$attper < .75) #30 students less than 75%
+#calculate mean attendance for each class
+mean_attper <- mean(star_by_teach$attper, na.rm = TRUE)
+#Calculate actual number of students in each class
+star_by_teach <- star_by_teach %>% group_by(g1tchid) %>% mutate(g1classsize, 
+                         special_count=sum(special=="YES"),
+                         remaining_students=g1classsize - special_count) %>%
+  mutate(adjusted_classsize= mean_attper*remaining_students) %>% ungroup()
+star_by_teach$adjusted_classsize <- round(star_by_teach$adjusted_classsize)
+```
+
+## Exploratory Data Analysis
+
+From the Harvard dataset, I will be working with the following variables:
+
+```{r, echo=FALSE}
+variable_description <- data.frame(
+  Variable_Name = c("First-grade math scores (g1tmathss)", "First-grade teacher id (g1tchid)", 
+                    "Days absent and present in first grade (g1absent, g1present)", "Original class size (g1classsize)", 
+                    "If the first grader was pulled out for special education (g1specin)", 
+                    "Attendance", "Adjusted class size"),
+  Description = c("This was my response variable in my initial analysis. Used to compare my results from the initial analysis to the adjusted class size.",
+                  "This is for sorting the data by class.",
+                  "These are used for calculating the students' attendance. Attendance = days present / (days present + days absent).",
+                  "This is the starting number to calculate the adjusted class size.",
+                  "Used to adjust class size by subtracting students pulled out for special education.",
+                  "Explained above; attendance rate used in the adjusted class size calculation.",
+                  "Adjusted class size based on the attendance rate and number of students pulled out for special education."),
+  Transformation = c("Response variable for analysis.",
+                     "No transformations.",
+                     "Used for calculating attendance (attendance = days present / (days present + days absent)).",
+                     "No transformations.",
+                     "Counted the number of students pulled out of class for special education and subtracted them from the original class size.",
+                     "Explained above; the ratio of days present to total days (absent + present).",
+                     "Calculated by: (original class size - number of students pulled out for special education) * mean of attendance."))
+kable(variable_description, caption = "Summary of Variables and Transformations", align = "l")
+```
+
+I created a new dataset with all these variables. First, I removed all NA values in the first-grade math scores. This ensured that I was only looking at first-grade classes. Also the whole purpose of this analysis is to see if class size affects the math score. We cannot do this if the student is missing their first-grade math score. The total number of students is now 6,598.
+
+Then I checked to see if there were still any NA values in my dataset. Two students did have reported values for if they were in the special education program. These students were removed from the dataset, and are insignificant when compared to the large value of students recorded by the dataset.
+
+Attendance also had NA values, 144 of them. The number of attendance NA values by the teacher was counted. Two classes had missing attendance values for all of their students. Another class had 8 students with missing attendance values. The rest of the NA values were no more than three students from a class. Since removing these NA values will alter our adjusted class size, and therefore cannot be removed. Instead, I will replace them with the mean students' attendance. Upon a closer investigation into attendance, the average attendance is 0.95 and the median is 0.96. The minimum attendance is 0.47 and there appears to be few students around the same range so the mean is not low because of a single outlier. It is safe to replace the NA values with the mean attendance (further explanation in Model Diagnostics section). However, the two classes with all missing attendance values were removed from the dataset because they would not add any new information.
+
+<details>
+
+<summary>Press here to view attendance summary statistics</summary>
+
+```{r, echo=FALSE}
+summary(star_by_teach$attper)
+boxplot(star_by_teach$attper)
+```
+
+<details>
+
+<summary>Press here to view compare summary statistics for class size</summary>
+
+```{r, echo=FALSE}
+summary(star_by_teach$g1classsize)
+summary(star_by_teach$adjusted_classsize)
+```
+
+To evaluate changes in the distribution of class sizes, range was the selected summary measure. The range of class sizes has shifted. Originally, the smallest class size was 12 students, while the largest was 30. In comparison, the adjusted class sizes now ranges from a minimum of 5 students to a maximum of 25. This shift is depicted in the histograms above. Furthermore, the original distribution of class sizes mostly consisted of classes with 21-24 students, followed by smaller groups around 15 and 17 students. The histogram for adjusted class sizes, however, indicates that the most common class size is now 16 students, with a more normal distribution across the range compared to the original class size distribution.
+
+<details>
+
+<summary>Press here to view compare distribution or original and adjusted class size</summary>
+
+```{r, echo=FALSE}
+#Univariate Analysis
+ggplot(star_by_teach, aes(x=g1classsize)) + geom_histogram(binwidth = 1, color = "black", fill = "lightyellow")+labs(x="Number of Students Enrolled", y="Number of Classes", title="Original Distribution of class size")
+ggplot(star_by_teach, aes(x=adjusted_classsize)) + geom_histogram(binwidth = 1, color = "black", fill = "lightyellow")+labs(x="Number of Students", y="Number of Classes", title="Distribution of number of students in a class")
+```
+
+<details>
+
+<summary>Press here to view compare effects of original and adjusted class size on math scores</summary>
+
+```{r, echo=FALSE}
+#Multivariate Analysis
+ggplot(star_by_teach, aes(x=factor(g1classsize), y=g1tmathss))+ geom_boxplot() +labs(x="Original number of Students", y="First-Grade Math Score", title="Difference in math scores by the original number of students in a class")
+ggplot(star_by_teach, aes(x=factor(adjusted_classsize), y=g1tmathss))+ geom_boxplot() +labs(x="Number of Students", y="First-Grade Math Score", title="Difference in math scores by number of students in a class")
+```
+
+The above visualizations shows how the adjusted class size affects the math score. The first one shows the original number of students in a class and as you can tell the classes with 12 students had the highest math scores. As you increase the number of students in the class, there is a small gradual decline in the math scores. The second visualization is with the adjusted number of students. It is more difficult to determine which is the optimal number of students in a class. Classes with 8 students or less varied in math scores. Classes with 9 students did well but as you increase the number of students again there is a gradual decline in math scores. There is also a difference in outliers. With the original number of students, no matter the number of students in the class, there are still a few students that did extremely well. However, with the adjusted number of students, only in classes with ten or more students do we see the students with extremely high math scores.
+
+Note: Boxplots were used instead of a correlation plot because it was easier to notice trends.
+
+<details>
+
+<summary>Press here to view see scatterplots</summary>
+
+```{r, echo=FALSE}
+ggplot(star_by_teach, aes(x=factor(g1classsize), y=g1tmathss))+ geom_point() + labs(x="Original number of Students", y="First-Grade Math Score", title="Correlation between math scores by the original number of students in a class")
+ggplot(star_by_teach, aes(x=factor(adjusted_classsize), y=g1tmathss))+ geom_point()  +labs(x="Number of Students", y="First-Grade Math Score", title="Correlation between math scores by number of students in a class")
+```
+
+## Model
+
+To test for which is the better predictor the original class size or the adjusted class size on the math scores, a linear regression model was created. An ANOVA model and a logistic regression model are more for when using categorical variables. Therefore Linear regression is needed as it is better for prediction and when using are continuous variables.
+
+$Y=\beta_0 + X_1\beta_1 + X_2\beta_2 + \epsilon$ where: -Y is the response variable: first grade math scores -$\beta_0$ is the intercept -$X_1$ is the predictor variable of interest: original class size -$\beta_1$ is the coefficient for original class size -$X_2$ is the predictor variable of interest: adjusted class size -$\beta_2$ is the adjusted for adjusted class size -$\elipson$ is the residuals/error terms
+
+Note: both $\beta$s are used to determine the effects of its corresponding X has on Y.
+
+Assumptions linear regression: -Linearity -Error terms are i.i.d. -$\epsilon_i$ \~ N(0,$\sigma^2)$ -constant variance See Model Diagnostics for proof of assumptions
+
+```{r, echo=FALSE}
+#Create model
+model<- lm(g1tmathss ~ g1classsize + adjusted_classsize, star_by_teach)
+#Test Model
+print(summary(model))
+# 2nd Model Test
+wilcoxon <- wilcox.test(star_by_teach$g1classsize, star_by_teach$adjusted_classsize, paired = TRUE)
+print(wilcoxon)
+```
+
+Null hypothesis: There is no significant difference in first grade math scores from the original and adjusted class sizes.
+
+Alternative hypothesis: There is a significant difference in first grade math scores from the original and adjusted class sizes.
+
+Significance level: 0.001
+
+Result: The original class size was significant to the first grade math scores with the p-value of 8.24e-08 and the t-value of -5.368. The adjusted class size, however, was less significant to the math scores with the p-value of 0.00631 and the t-value of -2.732. Therefore we can reject the null hypothesis.
+
+For a second model test, I conducted a wilcoxon signed rank test to determine if there is a significant difference in the distributions of the original class size and the adjusted class size. From the test, the p-value very small, 2.2e-16 which confirms rejecting the null hypothesis.
+
+### Model Diagnositics
+
+Checking the assumptions of the linear model:
+
+-A residuals vs fitted values plot was used to check for linearity and constant variance. Since there is no pattern in the plot, we can assume constant variance. As shown with the red line, we can see that there is a linearity . -A QQ-plot was used to test for $\epsilon_i$ \~ N(0,$\sigma^2)$. The ends of the plot do not follow the line. This could mean the residuals do not follow normalcy.
+
+<details>
+
+<summary>Press here to view check assumptions</summary>
+
+```{r, echo=FALSE}
+plot(model, which = 1)
+plot(model, which = 2)
+```
+
+In order to do a paired t-test the assumption that the mean difference follows a normal distribution needs to be met. From the histogram above, we can see that it is not. Therefore a Wilcoxon Signed-Rank Test is better suited to check the model.
+
+<details>
+
+<summary>Press here to view check assumptions for paired t-test</summary>
+
+```{r, echo=FALSE}
+diff_classsize <- star_by_teach$g1classsize - star_by_teach$adjusted_classsize
+hist(diff_classsize, main = "Histogram of Differences", xlab = "Difference in Class Size")
+```
+
+The root squared mean was used to ensure that using the average was the best method for taking into consideration attendance in the adjusted scores. It had exactly the same affect as the average. When using the median the adjusted class size was still not as significant compared to the original class size but the p-value is now 0.00969 and the t-value is -2.588. Considering both these methods had no affect, it is safe for me to use the average.
+
+<details>
+
+<summary>Press here to view test using RMS for attendance</summary>
+
+```{r, echo=FALSE}
+#Using RMS for attendance
+star_with_RMS_attper <- star_by_teach %>%
+  mutate(adjusted_classsize= sqrt(mean((attper)^2))*remaining_students) %>% ungroup()
+star_with_RMS_attper$adjusted_classsize <- round(star_by_teach$adjusted_classsize)
+ggplot(star_with_RMS_attper, aes(x=adjusted_classsize)) + geom_histogram(binwidth = 1)+labs(x="Number of Students using RMS", y="Number of Classes", title="Distribution of number of students in a class using RMS for Attendance")
+ggplot(star_with_RMS_attper, aes(x=factor(adjusted_classsize), y=g1tmathss))+ geom_boxplot() +labs(x="Number of Students using RMS", y="First-Grade Math Score", title="Difference in math scores by number of students in a class using RMS")
+modela<- lm(g1tmathss ~ g1classsize + adjusted_classsize, star_with_RMS_attper)
+summary(modela)
+wilcoxona <- wilcox.test(star_with_RMS_attper$g1classsize, star_with_RMS_attper$adjusted_classsize, paired = TRUE)
+print(wilcoxona)
+```
+
+<details>
+
+<summary>Press here to view test using median for attendance</summary>
+
+```{r, echo=FALSE}
+#Using median for attendance
+med_attper <- median(star_by_teach$attper, na.rm = TRUE)
+med_star_by_teach <- star_by_teach %>% group_by(g1tchid) %>% mutate(g1classsize, 
+                         special_count=sum(special=="YES"),
+                         remaining_students=g1classsize - special_count) %>%
+  mutate(adjusted_classsize= med_attper*remaining_students) %>% ungroup()
+med_star_by_teach$adjusted_classsize <- round(med_star_by_teach$adjusted_classsize)
+ggplot(med_star_by_teach, aes(x=adjusted_classsize)) + geom_histogram(binwidth = 1)+labs(x="Number of Students using median", y="Number of Classes", title="Distribution of number of students in a class using median for Attendance")
+ggplot(med_star_by_teach, aes(x=factor(adjusted_classsize), y=g1tmathss))+ geom_boxplot() +labs(x="Number of Students using median", y="First-Grade Math Score", title="Difference in math scores by number of students in a class")
+modelb<- lm(g1tmathss ~ g1classsize + adjusted_classsize, med_star_by_teach)
+summary(modelb)
+wilcoxonb <- wilcox.test(med_star_by_teach$g1classsize, med_star_by_teach$adjusted_classsize, paired = TRUE)
+print(wilcoxonb)
+```
+
+<details>
+
+<summary>Press here to view test with no NA values</summary>
+
+```{r, echo=FALSE}
+#Removing NA values
+star_by_teach_no_na <- na.omit(star_by_teach)
+star_by_teach_no_na <- star_by_teach_no_na %>%
+  mutate(adjusted_classsize= (mean(attper)*remaining_students)) %>% ungroup()
+star_by_teach_no_na$adjusted_classsize <- round(star_by_teach_no_na$adjusted_classsize)
+ggplot(star_by_teach_no_na, aes(x=adjusted_classsize)) + geom_histogram(binwidth = 1)+labs(x="Number of Students", y="Number of Classes", title="Distribution of number of students in a class by removing NA values in Attendance")
+ggplot(star_by_teach_no_na, aes(x=factor(adjusted_classsize), y=g1tmathss))+ geom_boxplot() +labs(x="Number of Students", y="First-Grade Math Score", title="Difference in math scores by number of students determined by removing NA values")
+modelc<- lm(g1tmathss ~ g1classsize + adjusted_classsize, star_by_teach_no_na)
+summary(modelc)
+wilcoxonc <- wilcox.test(star_by_teach_no_na$g1classsize, star_by_teach_no_na$adjusted_classsize, paired = TRUE)
+print(wilcoxonc)
+```
+
+<details>
+
+<summary>Press here to view test with NA values replaced with median</summary>
+
+```{r, echo=FALSE}
+#Changing NA values into median
+star_by_teach_rwmed <- star_by_teach %>%
+  mutate(across(-special, ~ ifelse(is.na(.), median(., na.rm = TRUE), .)))
+colSums(is.na(star_by_teach_rwmed))
+star_by_teach_rwmed <- star_by_teach_rwmed %>%
+  mutate(adjusted_classsize= (mean(attper)*remaining_students)) %>% ungroup()
+star_by_teach_rwmed$adjusted_classsize <- round(star_by_teach_rwmed$adjusted_classsize)
+ggplot(star_by_teach_rwmed, aes(x=adjusted_classsize)) + geom_histogram(binwidth = 1)+labs(x="Number of Students", y="Number of Classes", title="Distribution of number of students in a class by changing NA values in Attendance to median")
+ggplot(star_by_teach_rwmed, aes(x=factor(adjusted_classsize), y=g1tmathss))+ geom_boxplot() +labs(x="Number of Students", y="First-Grade Math Score", title="Difference in math scores by number of students determined by changing NA values to median")
+modeld<- lm(g1tmathss ~ g1classsize + adjusted_classsize, star_by_teach_rwmed)
+summary(modeld)
+wilcoxond <- wilcox.test(star_by_teach_rwmed$g1classsize, star_by_teach_rwmed$adjusted_classsize, paired = TRUE)
+print(wilcoxond)
+```
+
+When re-running the same exams again but by removing all the NA values or by changing them to the median class attendance, the same exact results occurred.
+
+## Discussion
+
+An analysis was conducted to see if attendance and students being pulled out of class change the relationship between class size and math scores in first-grade students. Initial variables were irregular and inconsistent and, therefore were discarded. This also means a comparison between the initial report and this one cannot be done. Instead, I compared how the original and adjusted class size affected the math scores of first graders. The original class size was a better predictor of the math scores. Adjusting the class size had little effect in predicting the math scores. One possible limitation was the inconsistencies in attendance. Some students had a different number of total attendance days compared to their classmates, which means their attendance ratio was inaccurate.
+
+Having a smaller number of students creates other variables that can affect achievement test scores. For example, “class size reduction can be effective in improving teacher morale and in improving work conditions for teachers” (Folger, 1989). Even though class size would impact the test score, it would be because of the teachers' morale that actually had an impact. Similarly, both Bourke (1986) and Johnston (1990) suggest exploring the differences in teaching methods. A teacher with a small class changes the dynamic of the class. Instead of the exhaustive search for the right number of students in a class, researchers also include variables related to class size. Achieving the optimal class size would have a limited impact if other critical factors are not also optimized.
+
+## Acknowledgements
+
+I recieved help from Erin Moffat in designing my study. My brother, Sheridan DeMars, helped fix my writing errors.
+
+## References
+
+Bourke, S. (1986). How Smaller Is Better: Some Relationships Between Class Size, Teaching Practices, and Student Achievement. American Educational Research Journal, 23(4), 558–571. https://doi.org/10.3102/00028312023004558
+
+Evertson, C. M., & Randolph, C. H. (1989). Teaching practices and class size: A new look at an old issue. Peabody Journal of Education, 67(1), 85-105.
+
+Finn, Boyd-Zaharias, Fish, & Gerber (2007). Project STAR and Beyond: Database User’s Guide.
+
+Finn, Fulton, Zaharias, & Nye (1989). Carry‐over effects of small classes. Peabody Journal of Education, 67(1), 75–84. https://doi.org/10.1080/01619569209538670
+
+Folger (1989). Project star and class size policy. Peabody Journal of Education, 67(1), 1–16. https://doi.org/10.1080/01619569209538667
+
+Johnston (1990). What are Teachers’ Perceptions of Teaching in Different Classroom Contexts?
+
+Ryan, D. W., & Greenfield, T. (1975). The Class Size Question. Development of Research Studies Related to the Effects of Class Size, Pupil/dult, and Pupil/eacher Ratios. Ontario Government Bookstore.
